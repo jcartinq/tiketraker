@@ -2,7 +2,8 @@
   "name": "TiqueTracker - Control de Gastos",
   "short_name": "TiqueTracker",
   "description": "Clasificá tus tiquetes por rubro con IA y exportá a Excel. Hecho en Costa Rica.",
-  "start_url": "start_url": "/tiketraker/index.html",
+  "start_url": "/tiketraker/index.html",
+  "scope": "/tiketraker/",
   "display": "standalone",
   "background_color": "#FAF8F5",
   "theme_color": "#2D2D2D",
@@ -18,6 +19,5 @@
     { "src": "icons/icon-384x384.png", "sizes": "384x384", "type": "image/png", "purpose": "any maskable" },
     { "src": "icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
-  "categories": ["finance", "productivity"],
-  "screenshots": []
+  "categories": ["finance", "productivity"]
 }
