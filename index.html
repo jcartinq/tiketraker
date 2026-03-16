@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="es-CR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#2D2D2D">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TiqueTracker">
+  <meta name="description" content="Clasificá tus tiquetes por rubro con IA y exportá a Excel">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+  <title>TiqueTracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #FAF8F5;
+      --surface: #FFFFFF;
+      --text: #2D2D2D;
+      --text-muted: #888888;
+      --text-light: #AAAAAA;
+      --border: #E8E5E0;
+      --border-light: #F0EDE8;
+      --dark: #2D2D2D;
+      --accent1: #E07A5F;
+      --accent2: #3D405B;
+      --accent3: #81B29A;
+      --accent4: #F2CC8F;
+      --accent5: #B56576;
+      --accent6: #577590;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body { padding-bottom: calc(76px + var(--safe-bottom)); }
+
+    /* Animations */
+    @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .animate-in { animation: slideUp 0.35s cubic-bezier(.4,0,.2,1) both; }
+    .animate-fade { animation: fadeIn 0.3s ease both; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+    /* Header */
+    .header {
+      background: var(--dark);
+      color: var(--bg);
+      padding: calc(16px + var(--safe-top)) 20px 18px;
+      border-radius: 0 0 22px 22px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -40%;
+      right: -20%;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(224,122,95,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .header .subtitle {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      opacity: 0.5;
+      margin-top: 2px;
+    }
+    .header-stats {
+      display: flex;
+      gap: 20px;
+      margin-top: 14px;
+    }
+    .header-stat label {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      opacity: 0.45;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .header-stat .value {
+      font-family: 'DM Mono', monospace;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    /* Install Banner */
+    .install-banner {
+      margin: 12px 16px 0;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, var(--accent1), #c4563f);
+      color: white;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      animation: slideUp 0.4s ease both;
+      box-shadow: 0 4px 16px rgba(224,122,95,0.3);
+    }
+    .install-banner .text { font-size: 13px; font-weight: 600; }
+    .install-banner .sub { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+    .install-banner button {
+      padding: 8px 18px;
+      background: white;
+      color: var(--accent1);
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      flex-shrink: 0;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .install-banner .close-btn {
+      background: none;
+      color: white;
+      opacity: 0.7;
+      padding: 4px;
+      font-size: 18px;
+    }
+
+    /* Bottom Nav */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      display: flex;
+      padding: 8px 8px calc(8px + var(--safe-bottom));
+      box-shadow: 0 -2px 20px rgba(0,0,0,0.08);
+      z-index: 100;
+      border-radius: 18px 18px 0 0;
+    }
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 8px 4px;
+      border: none;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-btn.active {
+      background: var(--dark);
+      color: var(--bg);
+    }
+    .nav-btn .icon { font-size: 18px; }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      margin: 12px 16px;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      animation: slideUp 0.35s cubic-bezier(.4,0,.2,1) both;
+    }
+    .card h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 19px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    /* Forms */
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      display: block;
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 5px;
+    }
+    .form-input, .form-select {
+      width: 100%;
+      padding: 13px 14px;
+      border: 2px solid var(--border);
+      border-radius: 11px;
+      font-size: 15px;
+      font-family: 'DM Sans', sans-serif;
+      background: #FAFAF8;
+      outline: none;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .form-input:focus, .form-select:focus { border-color: var(--accent2); }
+    .form-input::placeholder { color: #c0bdb8; }
+    .form-row { display: flex; gap: 10px; }
+    .form-row > * { flex: 1; }
+
+    /* Buttons */
+    .btn {
+      padding: 13px 24px;
+      border: none;
+      border-radius: 11px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+      letter-spacing: -0.01em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--dark); color: var(--bg); }
+    .btn-accent { background: var(--accent1); color: white; }
+    .btn-green { background: var(--accent3); color: white; }
+    .btn-blue { background: var(--accent6); color: white; }
+    .btn-secondary { background: var(--border); color: var(--text-muted); }
+    .btn-full { width: 100%; }
+    .btn-row { display: flex; gap: 10px; margin-top: 6px; }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Entry list */
+    .entry-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .entry-item:last-child { border-bottom: none; }
+    .entry-name { font-size: 14px; font-weight: 600; }
+    .entry-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .entry-amount {
+      font-family: 'DM Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      text-align: right;
+    }
+    .entry-actions { display: flex; gap: 8px; margin-top: 6px; justify-content: flex-end; }
+    .entry-actions button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .entry-actions button:active { background: var(--border-light); }
+
+    /* Charts */
+    .chart-title {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .bar-label {
+      width: 85px;
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: right;
+      flex-shrink: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bar-track {
+      flex: 1;
+      background: var(--border-light);
+      border-radius: 5px;
+      height: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 5px;
+      transition: width 0.6s cubic-bezier(.4,0,.2,1);
+    }
+    .bar-value {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .donut-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; justify-content: center; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    .legend-pct { color: var(--text-light); margin-left: auto; font-family: 'DM Mono', monospace; font-size: 11px; }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 36px 0; color: var(--text-light); }
+    .empty .icon { font-size: 48px; margin-bottom: 10px; }
+    .empty .text { font-size: 13px; }
+
+    /* Photo preview */
+    .photo-preview {
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 14px;
+      border: 2px solid var(--border);
+    }
+    .photo-preview img { width: 100%; max-height: 260px; object-fit: cover; display: block; }
+
+    /* Processing */
+    .processing { text-align: center; padding: 32px 0; color: var(--text-muted); }
+    .processing .spinner { font-size: 36px; animation: spin 1s linear infinite; display: inline-block; margin-bottom: 10px; }
+    .processing .pulse-text { animation: pulse 1.5s ease infinite; font-size: 13px; }
+
+    /* Notification */
+    .notification {
+      position: fixed;
+      top: calc(12px + var(--safe-top));
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: white;
+      z-index: 999;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      animation: slideDown 0.3s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .notification.success { background: var(--accent3); }
+    .notification.error { background: var(--accent1); }
+
+    /* Rubro tags */
+    .rubro-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .rubro-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 13px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .rubro-tag .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .rubro-tag .remove {
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-muted);
+      padding: 0;
+      margin-left: 4px;
+    }
+
+    /* Filter select wrapper */
+    .filter-bar { margin-bottom: 12px; }
+
+    /* Scroll area */
+    .scroll-area { max-height: 50vh; overflow-y: auto; }
+
+    /* Summary line */
+    .summary-line {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      font-family: 'DM Mono', monospace;
+    }
+    .summary-line strong { color: var(--text); }
+
+    /* Hidden file input */
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+// ============================================================
+// TiqueTracker PWA - Full Application
+// ============================================================
+
+const DEFAULT_RUBROS = ["Alimentación","Transporte","Salud","Hogar","Entretenimiento","Educación","Servicios","Vestimenta","Tecnología","Otro"];
+
+const RUBRO_COLORS = {
+  "Alimentación": "#E07A5F", "Transporte": "#3D405B", "Salud": "#81B29A",
+  "Hogar": "#F2CC8F", "Entretenimiento": "#B56576", "Educación": "#6D6875",
+  "Servicios": "#577590", "Vestimenta": "#E5989B", "Tecnología": "#43AA8B", "Otro": "#9B9B9B"
+};
+
+function hashStr(s) { let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return h; }
+function getColor(r) { return RUBRO_COLORS[r] || `hsl(${Math.abs(hashStr(r))%360},55%,55%)`; }
+function formatCRC(n) { return "₡" + Number(n).toLocaleString("es-CR", {minimumFractionDigits:0}); }
+function formatDate(d) { return new Date(d+"T12:00:00").toLocaleDateString("es-CR",{day:"2-digit",month:"short",year:"numeric"}); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function today() { return new Date().toISOString().slice(0,10); }
+
+// State
+let state = {
+  view: "home",
+  entries: JSON.parse(localStorage.getItem("tt_entries") || "[]"),
+  rubros: JSON.parse(localStorage.getItem("tt_rubros") || "null") || [...DEFAULT_RUBROS],
+  form: { comercio:"", monto:"", rubro:"", fecha: today(), detalle:"" },
+  editId: null,
+  filterRubro: "Todos",
+  notification: null,
+  photoPreview: null,
+  photoProcessing: false,
+  newRubro: "",
+  installPrompt: null,
+  showInstallBanner: false,
+};
+
+function save() {
+  localStorage.setItem("tt_entries", JSON.stringify(state.entries));
+  localStorage.setItem("tt_rubros", JSON.stringify(state.rubros));
+}
+
+function notify(msg, type="success") {
+  state.notification = { msg, type };
+  render();
+  setTimeout(() => { state.notification = null; render(); }, 3000);
+}
+
+function setView(v) {
+  state.view = v;
+  if (v !== "add") state.editId = null;
+  render();
+}
+
+// ---- AI Functions ----
+async function classifyWithAI(text) {
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{role:"user", content:`Sos un clasificador de gastos personales en Costa Rica. Dado el siguiente texto de un tiquete o descripción de gasto, devolvé SOLO un JSON (sin markdown, sin backticks) con estos campos:
+- "comercio": nombre del comercio o tienda (string)
+- "monto": monto total en colones, solo número (number)
+- "rubro": clasificá en UNO de estos rubros: ${state.rubros.join(", ")}
+- "detalle": breve descripción del gasto (string)
+- "fecha": fecha si aparece, en formato YYYY-MM-DD, sino "${today()}" (string)
+
+Texto del tiquete:
+${text}`}]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content?.find(b=>b.type==="text")?.text || "";
+    return JSON.parse(raw.replace(/```json|```/g,"").trim());
+  } catch(e) { console.error(e); return null; }
+}
+
+async function processPhoto(file) {
+  state.photoProcessing = true;
+  render();
+  try {
+    const base64 = await new Promise((res,rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(",")[1]);
+      r.onerror = () => rej(new Error("Read error"));
+      r.readAsDataURL(file);
+    });
+    const mediaType = file.type || "image/jpeg";
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{role:"user", content:[
+          {type:"image", source:{type:"base64", media_type:mediaType, data:base64}},
+          {type:"text", text:`Analizá esta imagen de un tiquete/factura de Costa Rica. Extraé los datos y devolvé SOLO un JSON (sin markdown, sin backticks) con:
+- "comercio": nombre del comercio (string)
+- "monto": monto total en colones, solo número (number)
+- "rubro": clasificá en UNO de estos rubros: ${state.rubros.join(", ")}
+- "detalle": breve descripción de los productos/servicios (string)
+- "fecha": fecha en formato YYYY-MM-DD (string)
+Si no podés leer algún campo, usá un valor razonable.`}
+        ]}]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content?.find(b=>b.type==="text")?.text || "";
+    const parsed = JSON.parse(raw.replace(/```json|```/g,"").trim());
+    state.form = {
+      comercio: parsed.comercio || "",
+      monto: String(parsed.monto || ""),
+      rubro: state.rubros.includes(parsed.rubro) ? parsed.rubro : "Otro",
+      fecha: parsed.fecha || today(),
+      detalle: parsed.detalle || "",
+    };
+    state.photoProcessing = false;
+    state.view = "add";
+    notify("¡Tiquete procesado con IA! Revisá los datos.");
+  } catch(e) {
+    console.error(e);
+    state.photoProcessing = false;
+    notify("Error procesando la imagen. Intentá de nuevo.", "error");
+  }
+  render();
+}
+
+async function handleAIClassify() {
+  if (!state.form.comercio && !state.form.detalle) return;
+  const text = `${state.form.comercio} ${state.form.detalle} ${state.form.monto ? formatCRC(state.form.monto) : ""}`;
+  notify("Clasificando con IA...");
+  const result = await classifyWithAI(text);
+  if (result?.rubro && state.rubros.includes(result.rubro)) {
+    state.form.rubro = result.rubro;
+    notify(`IA sugiere: ${result.rubro}`);
+  } else {
+    notify("No se pudo clasificar", "error");
+  }
+  render();
+}
+
+// ---- Actions ----
+function saveEntry() {
+  const f = state.form;
+  if (!f.comercio || !f.monto || !f.rubro) { notify("Completá comercio, monto y rubro","error"); return; }
+  if (state.editId) {
+    state.entries = state.entries.map(e => e.id === state.editId ? {...e, ...f, monto: Number(f.monto)} : e);
+    state.editId = null;
+    notify("Registro actualizado");
+  } else {
+    state.entries.push({ id: genId(), ...f, monto: Number(f.monto) });
+    notify("Gasto registrado");
+  }
+  state.form = { comercio:"", monto:"", rubro:"", fecha: today(), detalle:"" };
+  state.photoPreview = null;
+  save();
+  setView("table");
+}
+
+function deleteEntry(id) {
+  state.entries = state.entries.filter(e => e.id !== id);
+  save(); notify("Registro eliminado"); render();
+}
+
+function startEdit(entry) {
+  state.form = { comercio: entry.comercio, monto: String(entry.monto), rubro: entry.rubro, fecha: entry.fecha, detalle: entry.detalle };
+  state.editId = entry.id;
+  setView("add");
+}
+
+function exportExcel() {
+  const filtered = state.filterRubro === "Todos" ? state.entries : state.entries.filter(e => e.rubro === state.filterRubro);
+  const headers = ["Fecha","Comercio","Rubro","Detalle","Monto (₡)"];
+  const rows = filtered.map(e => [e.fecha, e.comercio, e.rubro, e.detalle, e.monto]);
+  const rubroTotals = {};
+  filtered.forEach(e => { rubroTotals[e.rubro] = (rubroTotals[e.rubro]||0) + e.monto; });
+  rows.push([]);
+  rows.push(["RESUMEN POR RUBRO"]);
+  rows.push(["Rubro","","","","Total (₡)"]);
+  Object.entries(rubroTotals).sort((a,b) => b[1]-a[1]).forEach(([r,t]) => rows.push([r,"","","",t]));
+  rows.push(["TOTAL GENERAL","","","",filtered.reduce((s,e)=>s+e.monto,0)]);
+
+  const csv = "\uFEFF" + [headers,...rows].map(r => r.map(c=>`"${c}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `gastos_${today()}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  notify("Excel descargado");
+}
+
+function addRubro() {
+  const r = state.newRubro.trim();
+  if (r && !state.rubros.includes(r)) {
+    state.rubros.push(r);
+    state.newRubro = "";
+    save(); notify(`Rubro "${r}" agregado`); render();
+  }
+}
+
+function removeRubro(r) {
+  if (DEFAULT_RUBROS.includes(r)) return;
+  state.rubros = state.rubros.filter(x => x !== r);
+  save(); render();
+}
+
+// ---- PWA Install ----
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  state.showInstallBanner = true;
+  render();
+});
+
+function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r => {
+    if (r.outcome === 'accepted') notify("¡App instalada!");
+    deferredPrompt = null;
+    state.showInstallBanner = false;
+    render();
+  });
+}
+
+function dismissInstall() {
+  state.showInstallBanner = false;
+  render();
+}
+
+// ---- Render ----
+function render() {
+  const app = document.getElementById("app");
+  const entries = state.entries;
+  const total = entries.reduce((s,e) => s+e.monto, 0);
+  const filtered = state.filterRubro === "Todos" ? entries : entries.filter(e => e.rubro === state.filterRubro);
+  const filteredTotal = filtered.reduce((s,e)=>s+e.monto,0);
+
+  // Chart data
+  const rubroData = state.rubros.map(r => ({
+    label: r,
+    value: entries.filter(e=>e.rubro===r).reduce((s,e)=>s+e.monto,0),
+    color: getColor(r),
+  })).filter(d=>d.value>0).sort((a,b)=>b.value-a.value);
+
+  const donutTotal = rubroData.reduce((s,d)=>s+d.value,0) || 1;
+
+  // Build donut SVG
+  let donutSVG = '';
+  if (rubroData.length > 0) {
+    const size=180, cx=90, cy=90, r=65, sw=28;
+    let cum = 0;
+    const da = 2 * Math.PI * r;
+    let circles = '';
+    rubroData.forEach(d => {
+      const pct = d.value / donutTotal;
+      const dashOff = da * (1 - pct);
+      const rot = cum * 360 - 90;
+      circles += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="${sw}" stroke-dasharray="${da}" stroke-dashoffset="${dashOff}" transform="rotate(${rot} ${cx} ${cy})" style="transition:all 0.5s ease"/>`;
+      cum += pct;
+    });
+    donutSVG = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      ${circles}
+      <text x="${cx}" y="${cy-5}" text-anchor="middle" style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;fill:#2D2D2D">${formatCRC(donutTotal)}</text>
+      <text x="${cx}" y="${cy+11}" text-anchor="middle" style="font-size:10px;fill:#888;font-family:'DM Sans',sans-serif">Total</text>
+    </svg>`;
+  }
+
+  const barMax = Math.max(...rubroData.map(d=>d.value), 1);
+
+  const navItems = [
+    {key:"home",icon:"🏠",label:"Inicio"},
+    {key:"add",icon:"✏️",label:"Manual"},
+    {key:"photo",icon:"📷",label:"Foto"},
+    {key:"table",icon:"📋",label:"Tabla"},
+    {key:"charts",icon:"📊",label:"Gráficos"},
+    {key:"settings",icon:"⚙️",label:"Rubros"},
+  ];
+
+  let html = '';
+
+  // Notification
+  if (state.notification) {
+    html += `<div class="notification ${state.notification.type}">${state.notification.msg}</div>`;
+  }
+
+  // Header
+  html += `<div class="header">
+    <h1>💰 TiqueTracker</h1>
+    <p class="subtitle">Control de gastos personales · Costa Rica</p>
+    ${entries.length > 0 ? `<div class="header-stats">
+      <div class="header-stat"><label>Total Gastos</label><div class="value">${formatCRC(total)}</div></div>
+      <div class="header-stat"><label>Registros</label><div class="value">${entries.length}</div></div>
+    </div>` : ''}
+  </div>`;
+
+  // Install banner
+  if (state.showInstallBanner) {
+    html += `<div class="install-banner">
+      <div><div class="text">📲 Instalá TiqueTracker</div><div class="sub">Acceso directo desde tu pantalla</div></div>
+      <button onclick="installPWA()">Instalar</button>
+      <button class="close-btn" onclick="dismissInstall()">✕</button>
+    </div>`;
+  }
+
+  // ---- Views ----
+  if (state.view === "home") {
+    html += `<div class="card animate-in">
+      <h2>¡Bienvenido!</h2>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:18px">
+        Registrá tus tiquetes tomando una foto o ingresándolos manualmente. La IA los clasifica automáticamente por rubro.
+      </p>
+      <div class="btn-row">
+        <button class="btn btn-accent btn-full" onclick="setView('photo')">📷 Escanear tiquete</button>
+        <button class="btn btn-primary btn-full" onclick="state.editId=null;state.form={comercio:'',monto:'',rubro:'',fecha:'${today()}',detalle:''};setView('add')">✏️ Ingreso manual</button>
+      </div>
+      ${entries.length === 0 ? `<div class="empty"><div class="icon">🧾</div><div class="text">Aún no tenés gastos registrados</div></div>` : `
+        <h3 style="font-size:14px;font-weight:700;margin:20px 0 10px;color:var(--text-muted)">Últimos gastos</h3>
+        ${entries.slice(-3).reverse().map(e => `
+          <div class="entry-item">
+            <div style="min-width:0;flex:1">
+              <div class="entry-name">${esc(e.comercio)}</div>
+              <div class="entry-meta">${formatDate(e.fecha)} · <span class="badge" style="background:${getColor(e.rubro)}22;color:${getColor(e.rubro)}">${esc(e.rubro)}</span></div>
+            </div>
+            <div class="entry-amount">${formatCRC(e.monto)}</div>
+          </div>
+        `).join('')}
+      `}
+    </div>`;
+  }
+
+  if (state.view === "photo") {
+    html += `<div class="card animate-in">
+      <h2>📷 Escanear tiquete</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Tomá una foto o seleccioná una imagen del tiquete. La IA extraerá los datos automáticamente.</p>
+      <input type="file" accept="image/*" capture="environment" id="photoInput" class="hidden" onchange="handlePhotoInput(this)">
+      <button class="btn btn-accent btn-full" onclick="document.getElementById('photoInput').click()" ${state.photoProcessing?'disabled':''}>
+        ${state.photoProcessing ? '⏳ Procesando...' : '📸 Tomar foto / Elegir imagen'}
+      </button>
+      ${state.photoPreview ? `<div class="photo-preview" style="margin-top:14px"><img src="${state.photoPreview}" alt="Preview"></div>` : ''}
+      ${state.photoProcessing ? `<div class="processing"><div class="spinner">🤖</div><div class="pulse-text">Analizando tiquete con IA...</div></div>` : ''}
+    </div>`;
+  }
+
+  if (state.view === "add") {
+    html += `<div class="card animate-in">
+      <h2>${state.editId ? '✏️ Editar gasto' : '✏️ Registrar gasto'}</h2>
+      <div class="form-group">
+        <label class="form-label">Comercio / Tienda</label>
+        <input class="form-input" placeholder="Ej: AutoMercado, Uber, CCSS..." value="${esc(state.form.comercio)}" oninput="state.form.comercio=this.value">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Monto (₡)</label>
+          <input class="form-input" type="number" inputmode="numeric" placeholder="12500" value="${esc(state.form.monto)}" oninput="state.form.monto=this.value">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input class="form-input" type="date" value="${state.form.fecha}" oninput="state.form.fecha=this.value">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rubro</label>
+        <div style="display:flex;gap:8px">
+          <select class="form-select" style="flex:1" onchange="state.form.rubro=this.value">
+            <option value="">Seleccionar rubro...</option>
+            ${state.rubros.map(r => `<option value="${esc(r)}" ${state.form.rubro===r?'selected':''}>${esc(r)}</option>`).join('')}
+          </select>
+          <button class="btn btn-blue" onclick="handleAIClassify()" title="Clasificar con IA">🤖</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Detalle (opcional)</label>
+        <input class="form-input" placeholder="Ej: Compra semanal de frutas" value="${esc(state.form.detalle)}" oninput="state.form.detalle=this.value">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green btn-full" onclick="saveEntry()">${state.editId ? '💾 Actualizar' : '💾 Guardar gasto'}</button>
+        ${state.editId ? `<button class="btn btn-secondary" onclick="state.editId=null;state.form={comercio:'',monto:'',rubro:'',fecha:'${today()}',detalle:''};render()">Cancelar</button>` : ''}
+      </div>
+    </div>`;
+  }
+
+  if (state.view === "table") {
+    html += `<div class="card animate-in">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h2 style="margin-bottom:0">📋 Gastos</h2>
+        <button class="btn btn-primary" onclick="exportExcel()" ${entries.length===0?'disabled':''}>📥 Excel</button>
+      </div>
+      <div class="filter-bar">
+        <select class="form-select" onchange="state.filterRubro=this.value;render()">
+          <option value="Todos">Todos los rubros</option>
+          ${state.rubros.map(r => `<option value="${esc(r)}" ${state.filterRubro===r?'selected':''}>${esc(r)}</option>`).join('')}
+        </select>
+      </div>
+      ${filtered.length === 0 ? `<div class="empty"><div class="icon">📭</div><div class="text">No hay gastos registrados</div></div>` : `
+        <div class="summary-line">${filtered.length} registro${filtered.length!==1?'s':''} · Total: <strong>${formatCRC(filteredTotal)}</strong></div>
+        <div class="scroll-area">
+          ${filtered.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(e => `
+            <div class="entry-item">
+              <div style="flex:1;min-width:0">
+                <div class="entry-name">${esc(e.comercio)}</div>
+                <div class="entry-meta">${formatDate(e.fecha)}${e.detalle?' · '+esc(e.detalle):''}</div>
+                <span class="badge" style="background:${getColor(e.rubro)}22;color:${getColor(e.rubro)};margin-top:4px">${esc(e.rubro)}</span>
+              </div>
+              <div style="text-align:right;flex-shrink:0;margin-left:12px">
+                <div class="entry-amount">${formatCRC(e.monto)}</div>
+                <div class="entry-actions">
+                  <button onclick="startEdit(state.entries.find(x=>x.id==='${e.id}'))">✏️</button>
+                  <button onclick="if(confirm('¿Eliminar este gasto?'))deleteEntry('${e.id}')">🗑️</button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `}
+    </div>`;
+  }
+
+  if (state.view === "charts") {
+    html += `<div class="card animate-in">
+      <h2>📊 Análisis de gastos</h2>
+      ${entries.length === 0 ? `<div class="empty"><div class="icon">📉</div><div class="text">Registrá gastos para ver gráficos</div></div>` : `
+        <div style="margin-bottom:24px">
+          <div class="chart-title">Distribución por rubro</div>
+          <div class="donut-wrap">
+            ${donutSVG}
+            <div style="display:flex;flex-direction:column;gap:5px">
+              ${rubroData.map(d => `<div class="legend-item">
+                <div class="legend-dot" style="background:${d.color}"></div>
+                <span style="color:var(--text-muted)">${esc(d.label)}</span>
+                <span class="legend-pct">${((d.value/donutTotal)*100).toFixed(0)}%</span>
+              </div>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="chart-title">Gasto por rubro</div>
+          ${rubroData.map(d => `<div class="bar-row">
+            <span class="bar-label">${esc(d.label)}</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${(d.value/barMax)*100}%;background:${d.color};min-width:${d.value>0?'4px':'0'}"></div>
+              <span class="bar-value">${formatCRC(d.value)}</span>
+            </div>
+          </div>`).join('')}
+        </div>
+      `}
+    </div>`;
+  }
+
+  if (state.view === "settings") {
+    html += `<div class="card animate-in">
+      <h2>⚙️ Rubros personalizados</h2>
+      <div style="display:flex;gap:8px;margin-bottom:18px">
+        <input class="form-input" style="flex:1" placeholder="Nuevo rubro..." value="${esc(state.newRubro)}" oninput="state.newRubro=this.value" onkeydown="if(event.key==='Enter')addRubro()">
+        <button class="btn btn-green" onclick="addRubro()">+ Agregar</button>
+      </div>
+      <div class="rubro-tags">
+        ${state.rubros.map(r => `<div class="rubro-tag" style="background:${getColor(r)}18;border:1px solid ${getColor(r)}44">
+          <div class="dot" style="background:${getColor(r)}"></div>
+          <span>${esc(r)}</span>
+          ${!DEFAULT_RUBROS.includes(r) ? `<button class="remove" onclick="removeRubro('${esc(r)}')">✕</button>` : ''}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Footer
+  html += `<div style="text-align:center;padding:16px 0 8px;font-size:10px;color:var(--text-light);font-family:'DM Mono',monospace">TiqueTracker · Ecosistema ODISEO · ${new Date().getFullYear()}</div>`;
+
+  // Bottom nav
+  html += `<nav class="bottom-nav">
+    ${navItems.map(n => `<button class="nav-btn ${state.view===n.key?'active':''}" onclick="setView('${n.key}')">
+      <span class="icon">${n.icon}</span>
+      <span>${n.label}</span>
+    </button>`).join('')}
+  </nav>`;
+
+  app.innerHTML = html;
+}
+
+function handlePhotoInput(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  state.photoPreview = URL.createObjectURL(file);
+  render();
+  processPhoto(file);
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Init
+render();
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(r => {
+    console.log('SW registered:', r.scope);
+  }).catch(e => console.log('SW error:', e));
+}
+</script>
+</body>
+</html>
